@@ -18,9 +18,7 @@ use std::env;
 
 #[tokio::main]
 async fn main() -> AppResult<()> {
-
     let args: Vec<String> = env::args().collect();
-    println!("{args:?}");
     // Create an application.
     let mut app = App::new(args[1].clone());
 
@@ -46,6 +44,5 @@ async fn main() -> AppResult<()> {
 
     // Exit the user interface.
     tui.exit()?;
-    println!("{}", app.current_value);
     Ok(())
 }
