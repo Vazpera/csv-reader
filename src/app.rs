@@ -1,0 +1,168 @@
+use std::error;
+
+/// Application result type.
+pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
+
+/// Application.
+#[derive(Debug)]
+pub struct App {
+    /// Is the application running?
+    pub running: bool,
+    /// counter
+    pub counter: u8,
+    /// path to the file to read
+    pub value_matrix: Vec<Vec<String>>,
+    pub cursor_pos: usize,
+    pub current_value: String,
+    pub current_location: (usize, usize),
+    pub editing: bool,
+    pub path: String,
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self {
+            running: true,
+            counter: 0,
+            value_matrix: Vec::new(),
+            cursor_pos: 0,
+            current_value: String::new(),
+            current_location: (0, 0),
+            editing: false,
+            path: String::new(),
+        }
+    }
+}
+
+impl App {
+    /// Constructs a new instance of [`App`].
+    pub fn new(path: String) -> Self {
+        let file = std::fs::read_to_string(path.clone()).expect("File read error");
+        let value_matrix: Vec<Vec<String>> = file
+            .split('\n')
+            .map(|x| x.to_string())
+            .map(|x: String| x.split(',').map(|x| x.to_string()).collect::<Vec<String>>())
+            .collect();
+
+        Self {
+            running: true,
+            counter: 0,
+            current_value: value_matrix.clone()[0][0].clone(),
+            value_matrix: value_matrix.clone(),
+            cursor_pos: value_matrix.clone()[0][0].clone().len(),
+            current_location: (0, 0),
+            editing: false,
+            path: path,
+        }
+    }
+
+    /// Handles the tick event of the terminal.
+    pub fn tick(&self) {}
+
+    /// Set running to false to quit the application.
+    pub fn quit(&mut self) {
+        self.running = false;
+    }
+    pub fn update_curr(&mut self) {
+        let file = std::fs::read_to_string(self.path.clone()).expect("File read error");
+        let value_matrix: Vec<Vec<String>> = file
+            .split('\n')
+            .map(|x| x.to_string())
+            .map(|x: String| x.split(',').map(|x| x.to_string()).collect::<Vec<String>>())
+            .collect();
+        self.value_matrix = value_matrix;
+
+        self.current_value =
+            self.value_matrix[self.current_location.1][self.current_location.0].clone();
+        self.cursor_pos = self.current_value.len();
+    }
+
+    pub fn move_up(&mut self) {
+        match self.current_location.1.checked_sub(1) {
+            Some(j) => self.current_location.1 = j,
+            None => {}
+        };
+        self.update_curr();
+    }
+    pub fn move_down(&mut self) {
+        match self.current_location.1 > self.value_matrix.len() - 2 {
+            false => self.current_location.1 = self.current_location.1 + 1,
+            true => {}
+        };
+        self.update_curr();
+    }
+    pub fn move_right(&mut self) {
+        match self.current_location.0 > self.value_matrix[0].len() - 2 {
+            false => self.current_location.0 = self.current_location.0 + 1,
+            true => {}
+        };
+        self.update_curr();
+    }
+    pub fn move_left(&mut self) {
+        match self.current_location.0.checked_sub(1) {
+            Some(j) => self.current_location.0 = j,
+            None => {}
+        };
+        self.update_curr();
+    }
+    pub fn edit(&mut self, ch: char) {
+        self.current_value.insert(self.cursor_pos, ch);
+        self.cursor_pos += 1;
+    }
+    pub fn backspace(&mut self) {
+        match self.cursor_pos {
+            0 => {}
+            _ => {
+                self.current_value.remove(self.cursor_pos - 1);
+                self.cursor_pos -= 1;
+            }
+        }
+    }
+    pub fn enter_editing(&mut self) {
+        self.editing = true;
+    }
+    pub fn exit_editing(&mut self) {
+        let _ = std::fs::write(
+            self.path.clone(),
+            self.value_matrix
+                .clone()
+                .into_iter()
+                .enumerate()
+                .fold(String::new(), |acc, (j, x)| {
+                    let y = x
+                        .into_iter()
+                        .enumerate()
+                        .fold(String::new(), |acc, (i, x)| {
+                            if acc.is_empty() {
+                                if (i, j) == self.current_location {
+                                    if self.current_value.is_empty() {
+                                        format!(" ")
+                                    } else {
+                                        format!("{}", self.current_value)
+                                    }
+                                } else {
+                                    format!("{}", x)
+                                }
+                            } else {
+                                if (i, j) == self.current_location {
+                                    if self.current_value.is_empty() {
+                                        format!("{},", acc)
+                                    } else {
+                                        format!("{},{}", acc, self.current_value)
+                                    }
+                                } else {
+                                    format!("{},{}", acc, x)
+                                }
+                            }
+                        });
+                    if acc.is_empty() {
+                        format!("{y}")
+                    } else {
+                        format!("{acc}\n{y}")
+                    }
+                }),
+        );
+        self.update_curr();
+        self.editing = false;
+    }
+}
