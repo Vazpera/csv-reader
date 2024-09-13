@@ -8,28 +8,42 @@ pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
 pub struct App {
     /// Is the application running?
     pub running: bool,
-    /// counter
-    pub counter: u8,
-    /// path to the file to read
+    /// values in the csv file
     pub value_matrix: Vec<Vec<String>>,
+    /// cursors pos
     pub cursor_pos: usize,
+    /// current string being looked at
     pub current_value: String,
+    /// current cell being looked at
     pub current_location: (usize, usize),
+    /// is the user editing?
     pub editing: bool,
+    /// path to file
     pub path: String,
+    /// first row as headers
+    pub has_header_row: bool,
+    /// first col as headers
+    pub has_label_col: bool,
+    /// Is graphing
+    pub is_graph: bool,
+    /// Previous actions
+    pub previous_matrices: Vec<Vec<Vec<String>>>,
 }
 
 impl Default for App {
     fn default() -> Self {
         Self {
             running: true,
-            counter: 0,
             value_matrix: Vec::new(),
             cursor_pos: 0,
             current_value: String::new(),
             current_location: (0, 0),
             editing: false,
             path: String::new(),
+            has_header_row: false,
+            has_label_col: false,
+            is_graph: false,
+            previous_matrices: Vec::new(),
         }
     }
 }
@@ -46,13 +60,16 @@ impl App {
 
         Self {
             running: true,
-            counter: 0,
             current_value: value_matrix.clone()[0][0].clone(),
             value_matrix: value_matrix.clone(),
             cursor_pos: value_matrix.clone()[0][0].clone().len(),
             current_location: (0, 0),
             editing: false,
             path: path,
+            has_header_row: false,
+            has_label_col: false,
+            is_graph: false,
+            previous_matrices: vec![value_matrix],
         }
     }
 
@@ -119,9 +136,22 @@ impl App {
         }
     }
     pub fn enter_editing(&mut self) {
-        self.editing = true;
+        if !self.is_graph {
+            self.editing = true;
+        }
     }
     pub fn exit_editing(&mut self) {
+        self.save();
+        self.update_curr();
+        self.editing = false;
+    }
+    pub fn toggle_header_row(&mut self) {
+        self.has_header_row = !self.has_header_row;
+    }
+    pub fn toggle_label_col(&mut self) {
+        self.has_label_col = !self.has_label_col;
+    }
+    pub fn save(&mut self) {
         let _ = std::fs::write(
             self.path.clone(),
             self.value_matrix
@@ -162,7 +192,85 @@ impl App {
                     }
                 }),
         );
+        self.previous_matrices.push(self.value_matrix.clone());
+    }
+    pub fn add_row(&mut self) {
+        self.save();
+        self.value_matrix.push(Vec::new());
+        self.save();
+    }
+    pub fn remove_row(&mut self) {
+        if self.value_matrix.len() != 0 {
+            self.current_location = (0, 0);
+            self.save();
+            self.value_matrix.pop();
+            self.save();
+        }
+    }
+    pub fn add_col(&mut self) {
+        self.save();
+        for row in &mut self.value_matrix {
+            row.push(String::new());
+        }
+        self.save();
+    }
+    pub fn remove_col(&mut self) {
+        if self.value_matrix[0].len() != 0 {
+            self.current_location = (0, 0);
+            self.save();
+            for row in &mut self.value_matrix {
+                row.pop();
+            }
+            self.save();
+        }
+    }
+    pub fn toggle_graph_mode(&mut self) {
+        self.is_graph = !self.is_graph;
+    }
+    pub fn undo(&mut self) {
         self.update_curr();
-        self.editing = false;
+        if let Some(j) = self.previous_matrices.pop() {
+            self.value_matrix = j
+        }
+        let _ = std::fs::write(
+            self.path.clone(),
+            self.value_matrix
+                .clone()
+                .into_iter()
+                .enumerate()
+                .fold(String::new(), |acc, (j, x)| {
+                    let y = x
+                        .into_iter()
+                        .enumerate()
+                        .fold(String::new(), |acc, (i, x)| {
+                            if acc.is_empty() {
+                                if (i, j) == self.current_location {
+                                    if self.current_value.is_empty() {
+                                        format!(" ")
+                                    } else {
+                                        format!("{}", self.current_value)
+                                    }
+                                } else {
+                                    format!("{}", x)
+                                }
+                            } else {
+                                if (i, j) == self.current_location {
+                                    if self.current_value.is_empty() {
+                                        format!("{},", acc)
+                                    } else {
+                                        format!("{},{}", acc, self.current_value)
+                                    }
+                                } else {
+                                    format!("{},{}", acc, x)
+                                }
+                            }
+                        });
+                    if acc.is_empty() {
+                        format!("{y}")
+                    } else {
+                        format!("{acc}\n{y}")
+                    }
+                }),
+        );
     }
 }
