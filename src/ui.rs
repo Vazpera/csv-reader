@@ -23,7 +23,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
         Style::new().cyan(),
     ];
     let [content, controls] =
-        Layout::horizontal([Constraint::Percentage(75), Constraint::Percentage(25)])
+        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
             .areas(frame.area());
 
     let bottom_title = Line::from(vec![
@@ -249,13 +249,13 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 Row::new(vec!["CTR+C", "Exit"]),
             ],
         },
-        [Constraint::Fill(1), Constraint::Fill(1)],
+        [Constraint::Fill(1), Constraint::Fill(3)],
     )
     .block(
         Block::bordered()
             .title("Controls")
             .title_alignment(Alignment::Center)
-            .title_bottom(format!("{}", app.previous_matrices.len())),
+            .title_bottom(format!("Edits: {}", app.previous_matrices.len())),
     )
     .render(controls, frame.buffer_mut(), &mut TableState::default());
 }

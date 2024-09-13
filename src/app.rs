@@ -196,15 +196,14 @@ impl App {
     }
     pub fn add_row(&mut self) {
         self.save();
-        self.value_matrix.push(Vec::new());
-        self.save();
+        self.value_matrix
+            .push(vec![" ".to_string(); self.value_matrix[0].len()]);
     }
     pub fn remove_row(&mut self) {
         if self.value_matrix.len() != 0 {
             self.current_location = (0, 0);
             self.save();
             self.value_matrix.pop();
-            self.save();
         }
     }
     pub fn add_col(&mut self) {
@@ -212,7 +211,6 @@ impl App {
         for row in &mut self.value_matrix {
             row.push(String::new());
         }
-        self.save();
     }
     pub fn remove_col(&mut self) {
         if self.value_matrix[0].len() != 0 {
@@ -221,7 +219,6 @@ impl App {
             for row in &mut self.value_matrix {
                 row.pop();
             }
-            self.save();
         }
     }
     pub fn toggle_graph_mode(&mut self) {
