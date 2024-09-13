@@ -1,13 +1,11 @@
-use std::{fmt::LowerExp, num::ParseFloatError, vec};
+use std::{num::ParseFloatError, vec};
 
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
     style::{Style, Stylize},
     symbols::Marker,
     text::{Line, Span},
-    widgets::{
-        self, block::Title, Axis, Block, Dataset, LegendPosition, Row, StatefulWidget, TableState,
-    },
+    widgets::{self, Axis, Block, Dataset, LegendPosition, Row, StatefulWidget, TableState},
     Frame,
 };
 

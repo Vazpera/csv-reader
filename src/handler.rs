@@ -31,7 +31,7 @@ pub fn handle_key_events(key_event: KeyEvent, app: &mut App) -> AppResult<()> {
                         app.quit();
                     }
                 }
-                KeyCode::Char('z') | KeyCode::Char('z') => {
+                KeyCode::Char('z') | KeyCode::Char('Z') => {
                     if key_event.modifiers == KeyModifiers::CONTROL {
                         app.undo();
                     }
