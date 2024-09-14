@@ -1,8 +1,9 @@
-use std::{num::ParseFloatError, vec};
+use std::{num::ParseFloatError, str::FromStr, vec};
 
+use crossterm::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
-    style::{Style, Stylize},
+    style::{Style, Styled, Stylize},
     symbols::Marker,
     text::{Line, Span},
     widgets::{self, Axis, Block, Dataset, LegendPosition, Row, StatefulWidget, TableState},
@@ -175,7 +176,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                         .title(app.path.clone())
                         .title_alignment(Alignment::Center)
                         .title_bottom(bottom_title),
-                );
+                ).on_black();
 
             frame.render_widget(chart, content);
         }
@@ -194,16 +195,23 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 .into_iter()
                 .enumerate()
                 .map(|(i, x)| {
-                    Row::new(x.into_iter().enumerate().map(|(j, x)| {
+                    let row = Row::new(x.into_iter().enumerate().map(|(j, x)| {
                         if (j, i) == app.current_location {
                             match app.editing {
-                                true => app.current_value.clone().bold(),
-                                false => app.current_value.clone().bold().on_red(),
+                                true => app.current_value.clone().bold().on_red(),
+                                false => app.current_value.clone().bold().underlined(),
                             }
+                        } else if j == 0 && app.has_label_col {
+                            x.bold()
                         } else {
                             x.into()
                         }
-                    }))
+                    }));
+                    if i % 2 == 0 {
+                        row.bg(Color::Rgb { r: 20, g: 20, b: 20 })
+                    } else {
+                        row
+                    }
                 });
 
             let mut boxes_state = TableState::default();
@@ -218,13 +226,14 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 Block::bordered()
                     .title(app.path.clone())
                     .title_alignment(Alignment::Center)
-                    .title_bottom(bottom_title),
+                    .title_bottom(bottom_title)
+                    .on_black()
             )
             .header(if app.has_header_row {
                 rows.collect::<Vec<Row>>()[0].clone().on_red().italic()
             } else {
                 Row::default()
-            })
+            }).on_black()
             .render(content, frame.buffer_mut(), &mut boxes_state);
         }
     }
@@ -257,5 +266,6 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             .title_alignment(Alignment::Center)
             .title_bottom(format!("Edits: {}", app.previous_matrices.len())),
     )
+    .on_black()
     .render(controls, frame.buffer_mut(), &mut TableState::default());
 }

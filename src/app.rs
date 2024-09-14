@@ -1,4 +1,4 @@
-use std::error;
+use std::{error, fs};
 
 /// Application result type.
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -27,7 +27,7 @@ pub struct App {
     /// Is graphing
     pub is_graph: bool,
     /// Previous actions
-    pub previous_matrices: Vec<Vec<Vec<String>>>,
+    pub previous_matrices: Vec<String>,
 }
 
 impl Default for App {
@@ -69,7 +69,7 @@ impl App {
             has_header_row: false,
             has_label_col: false,
             is_graph: false,
-            previous_matrices: vec![value_matrix],
+            previous_matrices: vec![file.clone()],
         }
     }
 
@@ -136,12 +136,13 @@ impl App {
         }
     }
     pub fn enter_editing(&mut self) {
+        self.save(true);
         if !self.is_graph {
             self.editing = true;
         }
     }
     pub fn exit_editing(&mut self) {
-        self.save();
+        self.save(false);
         self.update_curr();
         self.editing = false;
     }
@@ -151,7 +152,11 @@ impl App {
     pub fn toggle_label_col(&mut self) {
         self.has_label_col = !self.has_label_col;
     }
-    pub fn save(&mut self) {
+    pub fn save(&mut self, undoable: bool) {
+        if undoable == true {
+            self.previous_matrices.push(fs::read_to_string(self.path.clone()).unwrap());
+        }
+        self.value_matrix[self.current_location.1][self.current_location.0] = self.current_value.clone();
         let _ = std::fs::write(
             self.path.clone(),
             self.value_matrix
@@ -164,7 +169,7 @@ impl App {
                         .enumerate()
                         .fold(String::new(), |acc, (i, x)| {
                             if acc.is_empty() {
-                                if (i, j) == self.current_location {
+                                if (i, j) == self.current_location && !undoable {
                                     if self.current_value.is_empty() {
                                         format!(" ")
                                     } else {
@@ -192,22 +197,21 @@ impl App {
                     }
                 }),
         );
-        self.previous_matrices.push(self.value_matrix.clone());
     }
     pub fn add_row(&mut self) {
-        self.save();
+        self.save(true);
         self.value_matrix
             .push(vec![" ".to_string(); self.value_matrix[0].len()]);
     }
     pub fn remove_row(&mut self) {
         if self.value_matrix.len() != 0 {
             self.current_location = (0, 0);
-            self.save();
+            self.save(true);
             self.value_matrix.pop();
         }
     }
     pub fn add_col(&mut self) {
-        self.save();
+        self.save(true);
         for row in &mut self.value_matrix {
             row.push(String::new());
         }
@@ -215,7 +219,7 @@ impl App {
     pub fn remove_col(&mut self) {
         if self.value_matrix[0].len() != 0 {
             self.current_location = (0, 0);
-            self.save();
+            self.save(true);
             for row in &mut self.value_matrix {
                 row.pop();
             }
@@ -225,49 +229,10 @@ impl App {
         self.is_graph = !self.is_graph;
     }
     pub fn undo(&mut self) {
-        self.update_curr();
         if let Some(j) = self.previous_matrices.pop() {
-            self.value_matrix = j
+            fs::write(self.path.clone(), j);
         }
-        let _ = std::fs::write(
-            self.path.clone(),
-            self.value_matrix
-                .clone()
-                .into_iter()
-                .enumerate()
-                .fold(String::new(), |acc, (j, x)| {
-                    let y = x
-                        .into_iter()
-                        .enumerate()
-                        .fold(String::new(), |acc, (i, x)| {
-                            if acc.is_empty() {
-                                if (i, j) == self.current_location {
-                                    if self.current_value.is_empty() {
-                                        format!(" ")
-                                    } else {
-                                        format!("{}", self.current_value)
-                                    }
-                                } else {
-                                    format!("{}", x)
-                                }
-                            } else {
-                                if (i, j) == self.current_location {
-                                    if self.current_value.is_empty() {
-                                        format!("{},", acc)
-                                    } else {
-                                        format!("{},{}", acc, self.current_value)
-                                    }
-                                } else {
-                                    format!("{},{}", acc, x)
-                                }
-                            }
-                        });
-                    if acc.is_empty() {
-                        format!("{y}")
-                    } else {
-                        format!("{acc}\n{y}")
-                    }
-                }),
-        );
+        self.update_curr();
+        self.save(false);
     }
 }
