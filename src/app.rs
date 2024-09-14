@@ -24,6 +24,8 @@ pub struct App {
     pub has_header_row: bool,
     /// first col as headers
     pub has_label_col: bool,
+    /// showing controls
+    pub controls: bool,
     /// Is graphing
     pub is_graph: bool,
     /// Previous actions
@@ -44,6 +46,7 @@ impl Default for App {
             has_label_col: false,
             is_graph: false,
             previous_matrices: Vec::new(),
+            controls: true,
         }
     }
 }
@@ -69,7 +72,8 @@ impl App {
             has_header_row: false,
             has_label_col: false,
             is_graph: false,
-            previous_matrices: vec![file.clone()],
+            previous_matrices: vec![],
+            controls: true,
         }
     }
 
@@ -154,9 +158,11 @@ impl App {
     }
     pub fn save(&mut self, undoable: bool) {
         if undoable == true {
-            self.previous_matrices.push(fs::read_to_string(self.path.clone()).unwrap());
+            self.previous_matrices
+                .push(fs::read_to_string(self.path.clone()).unwrap());
         }
-        self.value_matrix[self.current_location.1][self.current_location.0] = self.current_value.clone();
+        self.value_matrix[self.current_location.1][self.current_location.0] =
+            self.current_value.clone();
         let _ = std::fs::write(
             self.path.clone(),
             self.value_matrix
@@ -230,9 +236,12 @@ impl App {
     }
     pub fn undo(&mut self) {
         if let Some(j) = self.previous_matrices.pop() {
-            fs::write(self.path.clone(), j);
+            let _ = fs::write(self.path.clone(), j);
         }
         self.update_curr();
         self.save(false);
+    }
+    pub fn toggle_controls(&mut self) {
+        self.controls = !self.controls;
     }
 }

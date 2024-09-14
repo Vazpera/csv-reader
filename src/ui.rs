@@ -1,9 +1,9 @@
-use std::{num::ParseFloatError, str::FromStr, vec};
+use std::{num::ParseFloatError, vec};
 
 use crossterm::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
-    style::{Style, Styled, Stylize},
+    style::{Style, Stylize},
     symbols::Marker,
     text::{Line, Span},
     widgets::{self, Axis, Block, Dataset, LegendPosition, Row, StatefulWidget, TableState},
@@ -122,7 +122,7 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     .title(format!("Encountered Error: {}", j))
                     .title_alignment(Alignment::Center)
                     .title_bottom(bottom_title),
-                content,
+                    if app.controls{content}else {frame.area()},
             );
         } else {
             let mut datasets: Vec<Dataset> = Vec::new();
@@ -176,9 +176,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                         .title(app.path.clone())
                         .title_alignment(Alignment::Center)
                         .title_bottom(bottom_title),
-                ).on_black();
+                )
+                .on_black();
 
-            frame.render_widget(chart, content);
+            frame.render_widget(chart, if app.controls{content}else {frame.area()});
         }
     } else {
         if app.value_matrix.len() == 0 {
@@ -208,7 +209,11 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                         }
                     }));
                     if i % 2 == 0 {
-                        row.bg(Color::Rgb { r: 20, g: 20, b: 20 })
+                        row.bg(Color::Rgb {
+                            r: 20,
+                            g: 20,
+                            b: 20,
+                        })
                     } else {
                         row
                     }
@@ -227,45 +232,49 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     .title(app.path.clone())
                     .title_alignment(Alignment::Center)
                     .title_bottom(bottom_title)
-                    .on_black()
+                    .on_black(),
             )
             .header(if app.has_header_row {
                 rows.collect::<Vec<Row>>()[0].clone().on_red().italic()
             } else {
                 Row::default()
-            }).on_black()
-            .render(content, frame.buffer_mut(), &mut boxes_state);
+            })
+            .on_black()
+            .render(if app.controls{content}else {frame.area()}, frame.buffer_mut(), &mut boxes_state);
         }
     }
-    let _ = widgets::Table::new(
-        match app.editing {
-            false => vec![
-                Row::new(vec!["Enter", "Enter Editing"]),
-                Row::new(vec!["Arrows", "Move Selection"]),
-                Row::new(vec!["q/CTR+C", "Exit"]),
-                Row::new(vec!["CTR+Z", "Undo"]),
-                Row::new(vec!["h", "Toggle Header Row"]),
-                Row::new(vec!["j", "Toggle Label Col"]),
-                Row::new(vec!["y", "Add Row"]),
-                Row::new(vec!["n", "Remove Row"]),
-                Row::new(vec!["u", "Add Col"]),
-                Row::new(vec!["m", "Remove Col"]),
-                Row::new(vec!["k", "Toggle Graph"]),
-            ],
-            true => vec![
-                Row::new(vec!["Enter", "Exit Editing"]),
-                Row::new(vec!["Arrows", "Move Cursor"]),
-                Row::new(vec!["CTR+C", "Exit"]),
-            ],
-        },
-        [Constraint::Fill(1), Constraint::Fill(3)],
-    )
-    .block(
-        Block::bordered()
-            .title("Controls")
-            .title_alignment(Alignment::Center)
-            .title_bottom(format!("Edits: {}", app.previous_matrices.len())),
-    )
-    .on_black()
-    .render(controls, frame.buffer_mut(), &mut TableState::default());
+    if app.controls {
+        let _ = widgets::Table::new(
+            match app.editing {
+                false => vec![
+                    Row::new(vec!["Enter", "Enter Editing"]),
+                    Row::new(vec!["Arrows", "Move Selection"]),
+                    Row::new(vec!["q/CTR+C", "Exit"]),
+                    Row::new(vec!["CTR+Z", "Undo"]),
+                    Row::new(vec!["h", "Toggle Header Row"]),
+                    Row::new(vec!["j", "Toggle Label Col"]),
+                    Row::new(vec!["y", "Add Row"]),
+                    Row::new(vec!["n", "Remove Row"]),
+                    Row::new(vec!["u", "Add Col"]),
+                    Row::new(vec!["m", "Remove Col"]),
+                    Row::new(vec!["k", "Toggle Graph"]),
+                    Row::new(vec!["c", "Toggle Control Panel"]),
+                ],
+                true => vec![
+                    Row::new(vec!["Enter", "Exit Editing"]),
+                    Row::new(vec!["Arrows", "Move Cursor"]),
+                    Row::new(vec!["CTR+C", "Exit"]),
+                ],
+            },
+            [Constraint::Fill(1), Constraint::Fill(3)],
+        )
+        .block(
+            Block::bordered()
+                .title("Controls Panel")
+                .title_alignment(Alignment::Center)
+                .title_bottom(format!("Edits: {}", app.previous_matrices.len())),
+        )
+        .on_black()
+        .render(controls, frame.buffer_mut(), &mut TableState::default());
+    }
 }
