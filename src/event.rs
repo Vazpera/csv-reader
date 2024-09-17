@@ -6,7 +6,7 @@ use tokio::sync::mpsc;
 
 use crate::app::AppResult;
 
-/// Terminal events.
+/// Terminal events
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
     /// Terminal tick.
