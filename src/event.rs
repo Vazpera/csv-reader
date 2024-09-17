@@ -9,7 +9,7 @@ use crate::app::AppResult;
 /// Terminal events.
 #[derive(Clone, Copy, Debug)]
 pub enum Event {
-    /// Terminal tick.
+    /// Terminal tick
     Tick,
     /// Key press.
     Key(KeyEvent),
