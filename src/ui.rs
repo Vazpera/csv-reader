@@ -6,26 +6,26 @@ use ratatui::{
     style::{Style, Stylize},
     symbols::Marker,
     text::{Line, Span},
-    widgets::{self, Axis, Block, Dataset, LegendPosition, Row, StatefulWidget, TableState},
+    widgets::{
+        self, Axis, Block, Dataset, LegendPosition, Paragraph, Row, StatefulWidget, TableState,
+    },
     Frame,
 };
 
-use crate::app::App;
+use crate::{app::App, theme};
 
 /// Renders the user interface widgets.
-pub fn render(app: &mut App, frame: &mut Frame) {
-    let styles: [Style; 7] = [
-        Style::new().red(),
-        Style::new().yellow(),
-        Style::new().green(),
-        Style::new().blue(),
-        Style::new().gray(),
-        Style::new().light_blue(),
-        Style::new().cyan(),
-    ];
+pub fn render(app: &mut App, frame: &mut Frame, theme: theme::Theme) {
+    let styles: Vec<Style> = theme
+        .extra_colors
+        .clone()
+        .into_iter()
+        .map(|x| Style::new().fg(x))
+        .collect();
+    let [path_bar, main] =
+        Layout::vertical([Constraint::Length(1), Constraint::Fill(1)]).areas(frame.area());
     let [content, controls] =
-        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)])
-            .areas(frame.area());
+        Layout::horizontal([Constraint::Percentage(80), Constraint::Percentage(20)]).areas(main);
 
     let bottom_title = Line::from(vec![
         Span::raw("Header Row: "),
@@ -121,8 +121,10 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                 Block::bordered()
                     .title(format!("Encountered Error: {}", j))
                     .title_alignment(Alignment::Center)
-                    .title_bottom(bottom_title),
-                    if app.controls{content}else {frame.area()},
+                    .title_bottom(bottom_title)
+                    .bg(theme.background)
+                    .border_style(Style::new().fg(theme.border)),
+                if app.controls { content } else { frame.area() },
             );
         } else {
             let mut datasets: Vec<Dataset> = Vec::new();
@@ -156,7 +158,8 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                                 .clone()
                                 .into_iter()
                                 .skip(if app.has_header_row { 1 } else { 0 })
-                                .collect::<Vec<String>>()
+                                .map(|x| x.fg(theme.text))
+                                .collect::<Vec<Span>>()
                         } else {
                             Vec::new()
                         })
@@ -164,22 +167,28 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                             app.value_matrix[0][0].clone()
                         } else {
                             String::new()
-                        }),
+                        })
+                        .fg(theme.text),
                 )
                 .y_axis(
                     Axis::default()
                         .bounds([lower_y, upper_y])
-                        .labels([format!("{}", lower_y), format!("{}", upper_y)]),
+                        .labels([
+                            format!("{}", lower_y).fg(theme.text),
+                            format!("{}", upper_y).fg(theme.text),
+                        ])
+                        .fg(theme.text),
                 )
                 .block(
                     Block::bordered()
-                        .title(app.path.clone())
                         .title_alignment(Alignment::Center)
-                        .title_bottom(bottom_title),
+                        .title_bottom(bottom_title)
+                        .bg(theme.background)
+                        .border_style(Style::new().fg(theme.border)),
                 )
-                .on_black();
+                .bg(theme.background);
 
-            frame.render_widget(chart, if app.controls{content}else {frame.area()});
+            frame.render_widget(chart, if app.controls { content } else { frame.area() });
         }
     } else {
         if app.value_matrix.len() == 0 {
@@ -199,21 +208,24 @@ pub fn render(app: &mut App, frame: &mut Frame) {
                     let row = Row::new(x.into_iter().enumerate().map(|(j, x)| {
                         if (j, i) == app.current_location {
                             match app.editing {
-                                true => app.current_value.clone().bold().on_red(),
-                                false => app.current_value.clone().bold().underlined(),
+                                true => app
+                                    .current_value
+                                    .clone()
+                                    .bold()
+                                    .bg(theme.header_background)
+                                    .fg(theme.header_text),
+                                false => {
+                                    app.current_value.clone().bold().underlined().fg(theme.text)
+                                }
                             }
                         } else if j == 0 && app.has_label_col {
-                            x.bold()
+                            x.bold().fg(theme.text)
                         } else {
-                            x.into()
+                            x.fg(theme.text)
                         }
                     }));
                     if i % 2 == 0 {
-                        row.bg(Color::Rgb {
-                            r: 20,
-                            g: 20,
-                            b: 20,
-                        })
+                        row.bg(theme.highlight_background).fg(theme.highlight_text)
                     } else {
                         row
                     }
@@ -229,41 +241,49 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             )
             .block(
                 Block::bordered()
-                    .title(app.path.clone())
-                    .title_alignment(Alignment::Center)
+                .title_alignment(Alignment::Center)
                     .title_bottom(bottom_title)
-                    .on_black(),
+                    .bg(theme.background)
+                    .border_style(Style::new().fg(theme.border)),
             )
             .header(if app.has_header_row {
-                rows.collect::<Vec<Row>>()[0].clone().on_red().italic()
+                rows.collect::<Vec<Row>>()[0]
+                    .clone()
+                    .fg(theme.header_text)
+                    .bg(theme.header_background)
+                    .italic()
             } else {
                 Row::default()
             })
-            .on_black()
-            .render(if app.controls{content}else {frame.area()}, frame.buffer_mut(), &mut boxes_state);
+            .bg(theme.background)
+            .render(
+                if app.controls { content } else { frame.area() },
+                frame.buffer_mut(),
+                &mut boxes_state,
+            );
         }
     }
     if app.controls {
         let _ = widgets::Table::new(
             match app.editing {
                 false => vec![
-                    Row::new(vec!["Enter", "Enter Editing"]),
-                    Row::new(vec!["Arrows", "Move Selection"]),
-                    Row::new(vec!["q/CTR+C", "Exit"]),
-                    Row::new(vec!["CTR+Z", "Undo"]),
-                    Row::new(vec!["h", "Toggle Header Row"]),
-                    Row::new(vec!["j", "Toggle Label Col"]),
-                    Row::new(vec!["y", "Add Row"]),
-                    Row::new(vec!["n", "Remove Row"]),
-                    Row::new(vec!["u", "Add Col"]),
-                    Row::new(vec!["m", "Remove Col"]),
-                    Row::new(vec!["k", "Toggle Graph"]),
-                    Row::new(vec!["c", "Toggle Control Panel"]),
+                    Row::new(vec!["Enter", "Enter Editing"]).fg(theme.text),
+                    Row::new(vec!["Arrows", "Move Selection"]).fg(theme.text),
+                    Row::new(vec!["q/CTR+C", "Exit"]).fg(theme.text),
+                    Row::new(vec!["CTR+Z", "Undo"]).fg(theme.text),
+                    Row::new(vec!["h", "Toggle Header Row"]).fg(theme.text),
+                    Row::new(vec!["j", "Toggle Label Col"]).fg(theme.text),
+                    Row::new(vec!["y", "Add Row"]).fg(theme.text),
+                    Row::new(vec!["n", "Remove Row"]).fg(theme.text),
+                    Row::new(vec!["u", "Add Col"]).fg(theme.text),
+                    Row::new(vec!["m", "Remove Col"]).fg(theme.text),
+                    Row::new(vec!["k", "Toggle Graph"]).fg(theme.text),
+                    Row::new(vec!["c", "Toggle Control Panel"]).fg(theme.text),
                 ],
                 true => vec![
-                    Row::new(vec!["Enter", "Exit Editing"]),
-                    Row::new(vec!["Arrows", "Move Cursor"]),
-                    Row::new(vec!["CTR+C", "Exit"]),
+                    Row::new(vec!["Enter", "Exit Editing"]).fg(theme.text),
+                    Row::new(vec!["Arrows", "Move Cursor"]).fg(theme.text),
+                    Row::new(vec!["CTR+C", "Exit"]).fg(theme.text),
                 ],
             },
             [Constraint::Fill(1), Constraint::Fill(3)],
@@ -272,9 +292,15 @@ pub fn render(app: &mut App, frame: &mut Frame) {
             Block::bordered()
                 .title("Controls Panel")
                 .title_alignment(Alignment::Center)
-                .title_bottom(format!("Edits: {}", app.previous_matrices.len())),
+                .title_bottom(format!("Edits: {}", app.previous_matrices.len()))
+                .bg(theme.background)
+                .border_style(Style::new().fg(theme.border)),
         )
-        .on_black()
+        .bg(theme.background)
         .render(controls, frame.buffer_mut(), &mut TableState::default());
     }
+    let path = Paragraph::new(app.path.clone())
+        .fg(theme.path_text)
+        .bg(theme.path_background);
+    frame.render_widget(path, path_bar);
 }

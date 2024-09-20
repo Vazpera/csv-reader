@@ -1,17 +1,24 @@
-use std::io;
-
-use ratatui::{backend::CrosstermBackend, Terminal};
+use std::{
+    fs,
+    io::{self, Write},
+};
 
 use crate::{
     app::{App, AppResult},
     event::{Event, EventHandler},
     handler::handle_key_events,
+    theme::Theme,
     tui::Tui,
 };
+use ratatui::style::Color;
+use ratatui::{backend::CrosstermBackend, Terminal};
+use serde::{Deserialize, Serialize};
+use serde_json::to_string_pretty;
 
 pub mod app;
 pub mod event;
 pub mod handler;
+pub mod theme;
 pub mod tui;
 pub mod ui;
 use std::env;
@@ -21,6 +28,8 @@ async fn main() -> AppResult<()> {
     let args: Vec<String> = env::args().collect();
     // Create an application.
     let mut app = App::new(args[1].clone());
+    let theme_string = fs::read_to_string("./theme.json");
+    let theme: Theme = serde_json::from_str(&theme_string.unwrap().as_str()).unwrap();
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stdout());
@@ -32,7 +41,7 @@ async fn main() -> AppResult<()> {
     // Start the main loop.
     while app.running {
         // Render the user interface.
-        tui.draw(&mut app)?;
+        tui.draw(&mut app, theme.clone())?;
         // Handle events.
         match tui.events.next().await? {
             Event::Tick => app.tick(),
