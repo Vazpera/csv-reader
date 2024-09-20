@@ -1,6 +1,5 @@
 use std::{num::ParseFloatError, vec};
 
-use crossterm::style::Color;
 use ratatui::{
     layout::{Alignment, Constraint, Layout},
     style::{Style, Stylize},

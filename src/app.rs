@@ -1,4 +1,4 @@
-use std::{error, fs};
+use std::{error, fs, path::PathBuf, str::FromStr};
 
 /// Application result type.
 pub type AppResult<T> = std::result::Result<T, Box<dyn error::Error>>;
@@ -54,7 +54,8 @@ impl Default for App {
 impl App {
     /// Constructs a new instance of [`App`].
     pub fn new(path: String) -> Self {
-        let file = std::fs::read_to_string(path.clone()).expect("File read error");
+        let absolute_path = PathBuf::from_str(path.as_str()).unwrap().canonicalize().unwrap();
+        let file = std::fs::read_to_string(absolute_path.clone()).expect("File read error");
         let value_matrix: Vec<Vec<String>> = file
             .split('\n')
             .map(|x| x.to_string())
@@ -68,7 +69,7 @@ impl App {
             cursor_pos: value_matrix.clone()[0][0].clone().len(),
             current_location: (0, 0),
             editing: false,
-            path: path,
+            path: absolute_path.to_string_lossy().to_string(),
             has_header_row: false,
             has_label_col: false,
             is_graph: false,
