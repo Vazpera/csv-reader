@@ -25,8 +25,27 @@ async fn main() -> AppResult<()> {
     let args: Vec<String> = env::args().collect();
     // Create an application.
     let mut app = App::new(args[1].clone());
-    let theme_string = fs::read_to_string("./theme.json");
-    let theme: Theme = serde_json::from_str(&theme_string.unwrap().as_str()).unwrap();
+    let source_directory = env::current_exe().unwrap().parent().unwrap().parent().unwrap().parent().unwrap().to_string_lossy().to_string();
+    let theme_string = fs::read_to_string(source_directory+"/theme.json");
+    let theme: Theme = match serde_json::from_str(&theme_string.unwrap().as_str()) {
+        Ok(them) => them,
+        Err(_) => serde_json::from_str(
+            "
+        {
+    \"border\": \"Gray\",
+    \"background\": \"Reset\",
+    \"text\": \"Gray\",
+    \"header_background\": \"Red\",
+    \"header_text\": \"White\",
+    \"highlight_background\": \"DarkGray\",
+    \"highlight_text\": \"White\",
+    \"path_background\": \"Reset\",
+    \"path_text\": \"Gray\",
+    \"extra_colors\": [\"red\", \"yellow\", \"green\", \"blue\", \"magenta\"]
+}",
+        )
+        .unwrap(),
+    };
 
     // Initialize the terminal user interface.
     let backend = CrosstermBackend::new(io::stdout());
